@@ -1,5 +1,5 @@
 import debug from 'debug';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client/edge';
 import { readReplicas } from '@prisma/extension-read-replicas';
 import { formatInTimeZone } from 'date-fns-tz';
 import { MYSQL, POSTGRESQL, getDatabaseType } from '@/lib/db';
@@ -409,8 +409,11 @@ function getClient(params?: {
     options,
   } = params || {};
 
+  const datasourceUrl = process.env.PRISMA_ACCELERATE_URL || process.env.DATABASE_URL;
+
   const prisma = new PrismaClient({
     errorFormat: 'pretty',
+    datasources: datasourceUrl ? { db: { url: datasourceUrl } } : undefined,
     ...(logQuery && PRISMA_LOG_OPTIONS),
     ...options,
   });
@@ -428,7 +431,7 @@ function getClient(params?: {
   }
 
   if (process.env.NODE_ENV !== 'production') {
-    global[PRISMA] = prisma;
+    (globalThis as any)[PRISMA] = prisma;
   }
 
   log('Prisma initialized');
@@ -436,7 +439,7 @@ function getClient(params?: {
   return prisma;
 }
 
-const client = global[PRISMA] || getClient();
+const client = (globalThis as any)[PRISMA] || getClient();
 
 export default {
   client,

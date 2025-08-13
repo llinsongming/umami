@@ -2,7 +2,6 @@ import path from 'path';
 import { browserName, detectOS } from 'detect-browser';
 import isLocalhost from 'is-localhost-ip';
 import ipaddr from 'ipaddr.js';
-import maxmind from 'maxmind';
 import {
   DESKTOP_OS,
   DESKTOP_SCREEN_WIDTH,
@@ -121,18 +120,18 @@ export async function getLocation(ip: string = '', headers: Headers, hasPayloadI
     }
   }
 
-  // Database lookup
-  if (!global[MAXMIND]) {
+  // Database lookup (only when edge headers are unavailable)
+  if (!(globalThis as any)[MAXMIND]) {
     const dir = path.join(process.cwd(), 'geo');
-
-    global[MAXMIND] = await maxmind.open(
+    const mod = await import('maxmind');
+    (globalThis as any)[MAXMIND] = await mod.default.open(
       process.env.GEOLITE_DB_PATH || path.resolve(dir, 'GeoLite2-City.mmdb'),
     );
   }
 
   // When the client IP is extracted from headers, sometimes the value includes a port
   const cleanIp = ip?.split(':')[0];
-  const result = global[MAXMIND].get(cleanIp);
+  const result = (globalThis as any)[MAXMIND].get(cleanIp);
 
   if (result) {
     const country = result.country?.iso_code ?? result?.registered_country?.iso_code;
